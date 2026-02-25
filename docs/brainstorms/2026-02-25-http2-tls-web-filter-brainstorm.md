@@ -9,7 +9,9 @@ topic: http2-tls-web-filter
 
 An open-source HTTP/2 proxy written in Rust that performs TLS inspection (MITM) to filter web traffic based on URL/domain patterns. Target audience is system administrators who need to monitor or restrict web access in corporate or managed environments.
 
-The tool will accept user-provided CA certificates for TLS interception, decrypt HTTPS traffic, apply filtering rules from a YAML/JSON configuration file, and either forward allowed traffic or block disallowed requests with customizable responses.
+**Proxy Mode:** Forward proxy (clients configure proxy settings to route through this tool)
+
+The tool will accept user-provided CA certificates for TLS interception, decrypt HTTPS traffic, apply filtering rules from a YAML/JSON configuration file, and either forward allowed traffic or block disallowed requests with a simple 403 Forbidden response.
 
 ## Why This Approach
 
