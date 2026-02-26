@@ -89,13 +89,13 @@ $ CONFIG_PATH=/etc/filter.yaml ./http2-web-filter   # Custom config path
 **Goal:** Initialize project, establish entrypoint, config loading, and testing scaffold
 
 **Tasks:**
-- [ ] Initialize Cargo project with dependencies (tokio, hyper, rustls, serde, tracing)
-- [ ] Create minimal binary entrypoint (`src/main.rs`)
-- [ ] Implement YAML config loader (`src/config/loader.rs`)
-- [ ] Define configuration schema (proxy port, CA paths, log settings)
-- [ ] Set up structured logging with `tracing`
-- [ ] Write first unit test for config loading (TDD)
-- [ ] Write first integration test scaffold
+- [x] Initialize Cargo project with dependencies (tokio, hyper, rustls, serde, tracing)
+- [x] Create minimal binary entrypoint (`src/main.rs`)
+- [x] Implement YAML config loader (`src/config/loader.rs`)
+- [x] Define configuration schema (proxy port, CA paths, log settings)
+- [x] Set up structured logging with `tracing`
+- [x] Write first unit test for config loading (TDD)
+- [x] Write first integration test scaffold
 
 **Deliverables:**
 - `Cargo.toml` with core dependencies

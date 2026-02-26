@@ -1,0 +1,28 @@
+[package]
+name = "http2-web-filter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.39", features = ["full"] }
+hyper = { version = "1.0", features = ["full"] }
+hyper-util = "0.1"
+hyper-tls = "0.6"
+tokio-rustls = "0.26"
+rustls = "0.23"
+rustls-pemfile = "2.0"
+rcgen = "0.13"
+moka = { version = "0.12", features = ["future"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+thiserror = "1.0"
+anyhow = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+once_cell = "1.19"
+
+[dev-dependencies]
+mockall = "0.12"
+tokio-test = "0.4"
+tempfile = "3.10"
