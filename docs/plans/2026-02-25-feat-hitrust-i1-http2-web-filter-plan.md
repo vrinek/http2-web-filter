@@ -175,11 +175,12 @@ This approach was selected because it directly addresses specific HITRUST i1 Cat
 
 #### Phase 5: Testing & Documentation (Week 8)
 
-**Goals:** Comprehensive testing, documentation, and HITRUST evidence preparation
+**Goals:** Comprehensive testing (80/20 split), documentation, and HITRUST evidence preparation
 
 **Tasks:**
-- Write unit tests for all modules (following TDD principles from CLAUDE.md)
-- Create integration tests for end-to-end proxy scenarios
+- Write unit tests for all modules (80% coverage target, following TDD)
+- Create one comprehensive integration test for end-to-end validation
+- Use `mockall` for dependency mocking in unit tests
 - Add certificate generation tests
 - Test PII redaction
 - Test certificate pinning bypass
@@ -188,19 +189,138 @@ This approach was selected because it directly addresses specific HITRUST i1 Cat
 - Document audit log format for assessors
 
 **Deliverables:**
-- `tests/unit/` - Unit tests
-- `tests/integration/` - Integration tests
+- Unit tests throughout `src/` (following TDD from Phase 1)
+- `tests/integration/` - One comprehensive end-to-end test
 - `README.md` - Project documentation
 - `docs/HITRUST-CONTROLS.md` - Control mapping documentation
 - `docs/DEPLOYMENT.md` - Tailscale deployment guide
 
 **Success Criteria:**
-- >80% test coverage
+- >80% test coverage (80% unit, 20% integration)
 - All HITRUST controls documented with evidence requirements
 - Deployment guide enables successful Tailscale exit node setup
 - Audit logs are assessor-ready
 
 ### Component Architecture
+
+## Implementation Approach
+
+### Development Methodology
+
+**Test-Driven Development (TDD)** is mandatory for all production code. The workflow follows classic TDD:
+1. Write tests first, run them, expect them to fail
+2. Write minimal code to make tests pass
+3. Refactor if necessary, keeping tests green
+
+**Prototypes:** Quick experiments and exploratory spikes are exempt from TDD. This includes:
+- Library feasibility testing (e.g., testing a new crate's API)
+- CLI UX prototypes for user feedback
+- Performance benchmarks
+
+Prototypes are disposable code—if they prove valuable, they are rewritten properly with TDD.
+
+### Git Workflow
+
+**Commit Frequency:** Commit early and often. Use short, single-line commit messages (50 characters or less).
+
+**Examples:**
+- `Add CA certificate loading from PEM`
+- `Implement dynamic cert generation with rcgen`
+- `Add URL filter pattern matching`
+- `Fix TLS handshake timeout handling`
+
+**Rationale:** Small commits enable:
+- Easy rollback when issues arise
+- Clear history of incremental progress
+- Better code review (small, focused changes)
+- Reduced risk of losing work
+
+**Workflow:**
+1. Write tests
+2. Run tests (expect failure)
+3. Implement feature
+4. Run tests (expect pass)
+5. `git add` and `git commit` with short message
+6. Repeat
+
+### Testing Strategy
+
+**Unit vs Integration Split: 80/20**
+
+- **80% Unit Tests:** Test individual components in isolation using `mockall` for dependency mocking
+- **20% Integration Tests:** One comprehensive integration test walks through the entire application stack
+
+**Testing Tools:**
+- `mockall` for generating mocks from traits
+- Trait-based Dependency Injection enables test doubles
+- `tokio::test` for async test support
+- `cargo test` with coverage reporting (target: >80% coverage)
+
+**Why This Approach:**
+The 80/20 split balances thoroughness with efficiency. Unit tests provide fast feedback during development, while a single comprehensive integration test validates end-to-end behavior. The trait-based architecture enables easy mocking without heavyweight frameworks.
+
+### Code Quality & CI
+
+**GitHub Actions CI Pipeline:**
+- `rustfmt` check (enforce consistent formatting)
+- `clippy` with strict lints (`-D warnings`, deny all warnings)
+- `cargo test` with coverage reporting (80% minimum threshold)
+- `cargo audit` for security vulnerability scanning
+- Multi-platform builds (Linux, macOS)
+
+**Code Quality Gates:**
+- Zero warnings from clippy
+- All tests passing
+- No `unwrap()` or `expect()` in production paths
+- Proper error handling with `thiserror` or `anyhow`
+
+### SOLID Principles
+
+All code will follow SOLID principles:
+
+**Single Responsibility:** Each module handles one concern:
+- `ca/` - Certificate authority only
+- `proxy/` - HTTP/2 proxy logic only
+- `filtering/` - Filter engines only
+- `audit/` - Logging only
+
+**Dependency Inversion:** High-level modules depend on abstractions (traits), not concrete implementations:
+```rust
+// FilterEngine trait enables swapping implementations
+#[async_trait]
+pub trait FilterEngine: Send + Sync {
+    async fn check(&self, request: &Request) -> FilterDecision;
+}
+
+// Concrete implementations
+pub struct UrlFilterEngine { ... }
+pub struct CategoryFilterEngine { ... }
+```
+
+This enables:
+- Unit testing with mock implementations
+- Swapping production implementations without code changes
+- Future extensibility (plugin system, external services)
+
+**Open/Closed:** Modules are open for extension (new filters, new log outputs) but closed for modification (existing code doesn't change).
+
+**Liskov Substitution:** All implementations of a trait must be interchangeable without breaking behavior.
+
+**Interface Segregation:** Keep traits small and focused (e.g., `FilterEngine` for filtering, `AuditLogger` for logging, separate from each other).
+
+### Technology Stack Details
+
+**Rust Edition:** 2021 (stable, production-ready)
+
+**Key Dependencies:**
+- `tokio` ^1.39 - Async runtime
+- `hyper` ^1.0 - HTTP/2 server/client
+- `rustls` ^0.23 - TLS stack (FIPS-capable via aws-lc-rs)
+- `rcgen` ^0.13 - Dynamic certificate generation
+- `moka` ^0.12 - Certificate caching
+- `tracing` ^0.1 - Structured logging
+- `serde` ^1.0 - YAML configuration
+- `mockall` ^0.12 - Test mocking
 
 ```rust
 // src/lib.rs - Module structure
@@ -452,11 +572,12 @@ This is a standalone binary, not a library. No public API surface to maintain. C
 
 ### Quality Gates
 
-- [ ] >80% test coverage
+- [ ] >80% test coverage (80% unit, 20% integration)
 - [ ] All HITRUST Category 10.c controls documented
 - [ ] Audit logs validated against HITRUST assessor requirements
 - [ ] Deployment guide tested on fresh Tailscale exit node
 - [ ] Code review with security focus
+- [ ] CI passing: rustfmt, clippy (zero warnings), tests, audit
 - [ ] No `unwrap()` or `expect()` in production paths
 - [ ] All errors properly logged and handled
 
