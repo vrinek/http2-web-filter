@@ -2,8 +2,64 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Audit output destination
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum AuditOutput {
+    /// Output to stdout only
+    #[default]
+    Stdout,
+    /// Output to file only
+    File,
+    /// Output to both stdout and file
+    Both,
+}
+
+/// Log level for filtering log messages
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum LogLevel {
+    /// Trace level - most verbose
+    Trace,
+    /// Debug level
+    Debug,
+    /// Info level (default)
+    #[default]
+    Info,
+    /// Warning level
+    Warn,
+    /// Error level - least verbose
+    Error,
+}
+
+impl LogLevel {
+    /// Convert LogLevel to a lowercase string for use with EnvFilter
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            LogLevel::Trace => "trace",
+            LogLevel::Debug => "debug",
+            LogLevel::Info => "info",
+            LogLevel::Warn => "warn",
+            LogLevel::Error => "error",
+        }
+    }
+}
+
+/// Log output format
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum LogFormat {
+    /// Human-readable pretty format
+    Pretty,
+    /// JSON format (default)
+    #[default]
+    Json,
+    /// Compact format
+    Compact,
+}
+
 /// Main configuration structure
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Config {
     /// Proxy server settings
     #[serde(default)]
@@ -111,76 +167,40 @@ impl Default for CaConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct AuditConfig {
     /// Output format: "stdout", "file", or "both" (default: "stdout")
-    #[serde(default = "default_audit_output")]
-    pub output: String,
+    #[serde(default)]
+    pub output: AuditOutput,
     /// File path for audit logs (when output is "file" or "both")
     pub file_path: Option<String>,
     /// Enable PII redaction (default: true)
     #[serde(default = "default_redact_pii")]
     pub redact_pii: bool,
     /// Log level for audit events (default: "info")
-    #[serde(default = "default_audit_level")]
-    pub level: String,
-}
-
-fn default_audit_output() -> String {
-    "stdout".to_string()
+    #[serde(default)]
+    pub level: LogLevel,
 }
 
 fn default_redact_pii() -> bool {
     true
 }
 
-fn default_audit_level() -> String {
-    "info".to_string()
-}
-
 impl Default for AuditConfig {
     fn default() -> Self {
         Self {
-            output: default_audit_output(),
+            output: AuditOutput::default(),
             file_path: None,
             redact_pii: default_redact_pii(),
-            level: default_audit_level(),
+            level: LogLevel::default(),
         }
     }
 }
 
 /// Logging configuration for application logs
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct LoggingConfig {
     /// Log level: "trace", "debug", "info", "warn", "error" (default: "info")
-    #[serde(default = "default_log_level")]
-    pub level: String,
+    #[serde(default)]
+    pub level: LogLevel,
     /// Output format: "pretty", "json", "compact" (default: "json")
-    #[serde(default = "default_log_format")]
-    pub format: String,
-}
-
-fn default_log_level() -> String {
-    "info".to_string()
-}
-
-fn default_log_format() -> String {
-    "json".to_string()
-}
-
-impl Default for LoggingConfig {
-    fn default() -> Self {
-        Self {
-            level: default_log_level(),
-            format: default_log_format(),
-        }
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            proxy: ProxyConfig::default(),
-            ca: CaConfig::default(),
-            audit: AuditConfig::default(),
-            logging: LoggingConfig::default(),
-        }
-    }
+    #[serde(default)]
+    pub format: LogFormat,
 }
