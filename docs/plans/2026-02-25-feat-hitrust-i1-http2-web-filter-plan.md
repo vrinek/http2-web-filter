@@ -73,133 +73,231 @@ This approach was selected because it directly addresses specific HITRUST i1 Cat
         └─────────┘ └──────────┘ └───────────┘
 ```
 
-### Implementation Phases
+### Implementation Phases (Sliced into Milestones)
 
-#### Phase 1: Foundation (Week 1-2)
+Each milestone is a shippable, testable increment. Configuration is YAML-only—no CLI flags. Binary is run as:
 
-**Goals:** Initialize project, implement core proxy infrastructure, establish CA certificate handling
+```bash
+$ ./http2-web-filter                    # Uses ./config/default.yaml
+$ CONFIG_PATH=/etc/filter.yaml ./http2-web-filter   # Custom config path
+```
+
+---
+
+#### M0: Project Foundation (Days 1-3)
+
+**Goal:** Initialize project, establish entrypoint, config loading, and testing scaffold
 
 **Tasks:**
-- Initialize Rust project with Cargo.toml and dependencies
-- Set up project structure (src/proxy/, src/ca/, src/audit/, src/config/)
-- Implement CA certificate loading and validation
-- Create dynamic certificate generation with `rcgen`
-- Build certificate cache with `moka`
-- Implement basic HTTP/2 server with `hyper`
+- [ ] Initialize Cargo project with dependencies (tokio, hyper, rustls, serde, tracing)
+- [ ] Create minimal binary entrypoint (`src/main.rs`)
+- [ ] Implement YAML config loader (`src/config/loader.rs`)
+- [ ] Define configuration schema (proxy port, CA paths, log settings)
+- [ ] Set up structured logging with `tracing`
+- [ ] Write first unit test for config loading (TDD)
+- [ ] Write first integration test scaffold
 
 **Deliverables:**
-- `Cargo.toml` with all dependencies
+- `Cargo.toml` with core dependencies
+- `src/main.rs` - Simple entrypoint, no flags
+- `src/config/loader.rs` - YAML config loading
+- `config/default.yaml` - Default configuration template
+- Working test suite (`cargo test` passes)
+
+**Acceptance Criteria:**
+- Binary compiles and runs without errors
+- Config loads from default location or `CONFIG_PATH` env var
+- Invalid YAML returns clear error message
+- First test demonstrates TDD workflow
+
+---
+
+#### M1: HTTP/2 Server Core (Days 4-7)
+
+**Goal:** Basic HTTP/2 proxy server accepting connections
+
+**Tasks:**
+- [ ] Implement HTTP/2 server with `hyper` (TDD: write test first)
+- [ ] Add TCP listener with configurable port
+- [ ] Implement basic HTTP proxy for non-CONNECT requests
+- [ ] Add connection logging to audit trail
+- [ ] Handle graceful shutdown (SIGTERM)
+
+**Deliverables:**
+- `src/proxy/server.rs` - HTTP/2 server
+- `src/proxy/handler.rs` - Basic request handler
+- `src/audit/logger.rs` - Initial audit logging
+- Tests for server startup and HTTP proxying
+
+**Acceptance Criteria:**
+- Server starts and listens on configured port
+- Plain HTTP requests are proxied successfully
+- Every request logged to audit trail
+- Server shuts down gracefully on SIGTERM
+
+---
+
+#### M2: CONNECT Tunneling (Week 2)
+
+**Goal:** HTTPS proxy support via CONNECT method (tunnel only, no inspection)
+
+**Tasks:**
+- [ ] Implement CONNECT method handler (TDD)
+- [ ] Add bidirectional tunneling for TLS passthrough
+- [ ] Handle TLS handshake between client and upstream
+- [ ] Add connection timeouts (30s default)
+- [ ] Implement connection semaphore (max 10,000)
+- [ ] Add upstream connection retry (1x with backoff)
+
+**Deliverables:**
+- `src/proxy/handler.rs` - CONNECT support
+- `src/proxy/tunnel.rs` - Bidirectional tunneling
+- `src/proxy/semaphore.rs` - Connection limiting
+- Tests for CONNECT handling and tunneling
+
+**Acceptance Criteria:**
+- HTTPS sites accessible through proxy
+- CONNECT requests establish TLS tunnel
+- Connection limits enforced
+- Timeouts prevent resource exhaustion
+- Audit logs show "tunnel" action for CONNECT
+
+---
+
+#### M3: TLS MITM & Certificate Management (Week 3)
+
+**Goal:** Full TLS MITM inspection with dynamic certificate generation
+
+**Tasks:**
+- [ ] Implement CA certificate loading from PEM (TDD)
+- [ ] Add dynamic certificate generation with `rcgen`
+- [ ] Build certificate cache with `moka` (1000 entries, 24h TTL)
+- [ ] Implement TLS MITM interception logic
+- [ ] Add certificate pinning bypass list
+- [ ] Configure HITRUST-compliant TLS (TLS 1.2+, strong ciphers)
+
+**Deliverables:**
 - `src/ca/mod.rs` - CA certificate management
 - `src/ca/cert_cache.rs` - Certificate caching
-- `src/proxy/server.rs` - HTTP/2 server implementation
+- `src/tls/mitm.rs` - MITM interception
+- `src/tls/config.rs` - HITRUST TLS configuration
+- `src/security/pinning.rs` - Certificate pinning bypass
 
-**Success Criteria:**
-- Can load organization-provided CA certificate
-- Can generate dynamic certificates for arbitrary domains
-- HTTP/2 server accepts connections on configured port
+**Acceptance Criteria:**
+- CA cert loads successfully
+- Dynamic certs generated for arbitrary domains
+- Certs cached and reused
+- TLS 1.2+ enforced, TLS 1.0/1.1 rejected
+- Pinned domains bypass inspection (direct tunnel)
+- Full MITM working: proxy → decrypt → forward → encrypt
 
-#### Phase 2: Core Proxy Implementation (Week 3-4)
+---
 
-**Goals:** Implement CONNECT tunneling, TLS MITM, and request/response handling
+#### M4: URL Filtering (Week 4)
 
-**Tasks:**
-- Implement CONNECT method handler for HTTPS proxying
-- Add TLS MITM with dynamic certificate generation
-- Build HTTP/2 client for upstream connections
-- Implement bidirectional data tunneling
-- Add timeout and resource management
-- Create connection semaphore for resource protection
-
-**Deliverables:**
-- `src/proxy/handler.rs` - Request handling with CONNECT support
-- `src/proxy/tunnel.rs` - Bidirectional tunneling
-- `src/tls/mitm.rs` - MITM interception logic
-- `src/tls/config.rs` - HITRUST-compliant TLS configuration
-
-**Success Criteria:**
-- Can proxy HTTPS traffic through CONNECT tunnel
-- TLS certificates are dynamically generated and cached
-- HTTP/2 to HTTP/2 proxying works end-to-end
-- Connection timeouts prevent resource exhaustion
-
-#### Phase 3: Filtering Engines (Week 5-6)
-
-**Goals:** Implement all four filtering capabilities
+**Goal:** First HITRUST control (10.c.1) - URL pattern filtering
 
 **Tasks:**
-- **URL Filtering:** Domain and path pattern matching with regex support
-- **DNS Filtering:** Integration with threat intelligence feeds
-- **Content Categorization:** Block/allow by category (social media, adult, gambling, file sharing)
-- **TLS Certificate Analysis:** Inspect certificates for validity and suspicious indicators
-- Implement filtering decision engine with rule precedence
-- Add 403 Forbidden responses with category explanations
+- [ ] Design `FilterEngine` trait for Dependency Inversion (TDD)
+- [ ] Implement URL pattern matching (regex for domains/paths)
+- [ ] Add filter rule precedence logic (blocklist > allowlist)
+- [ ] Create 403 Forbidden response with category explanation
+- [ ] Implement rule loading from `config/filters.yaml`
 
 **Deliverables:**
+- `src/filtering/mod.rs` - Filter trait definitions
 - `src/filtering/url.rs` - URL pattern matching
+- `src/filtering/engine.rs` - Decision engine
+- `config/filters.yaml` - Default URL filter rules
+- Tests with mocked filter dependencies
+
+**Acceptance Criteria:**
+- URLs match regex patterns correctly
+- Blocked domains return 403 with explanation
+- Rule precedence works (block > allow)
+- Audit logs include rule reference
+- HITRUST 10.c.1 evidence ready (config + logs)
+
+---
+
+#### M5: Complete Filtering (Week 5)
+
+**Goal:** All four HITRUST filtering controls working
+
+**Tasks:**
+- [ ] Implement DNS filtering with threat intelligence feeds
+- [ ] Add content categorization (social media, adult, gambling, file sharing)
+- [ ] Implement TLS certificate analysis (validity, suspicious indicators)
+- [ ] Create category definitions in `config/categories.yaml`
+- [ ] Add integration test covering all four filters
+
+**Deliverables:**
 - `src/filtering/dns.rs` - DNS threat feed integration
 - `src/filtering/categories.rs` - Content categorization
-- `src/filtering/engine.rs` - Decision engine
-- `config/filters.yaml` - Default filter rules
-- `config/categories.yaml` - Content categories
+- `src/filtering/certificate.rs` - TLS cert analysis
+- `config/categories.yaml` - Category definitions
+- Comprehensive integration test
 
-**Success Criteria:**
-- URL patterns correctly match domains and paths
+**Acceptance Criteria:**
 - DNS filtering blocks known malicious domains
-- Content categories are correctly identified
-- TLS certificate validation works
-- Blocked requests return 403 with explanation
+- Content categories correctly identified
+- TLS certificate validation detects issues
+- All four HITRUST 10.c controls implemented
+- Single integration test validates end-to-end
 
-#### Phase 4: Audit Logging & Configuration (Week 7)
+---
 
-**Goals:** Implement HITRUST-compliant audit logging and configuration system
+#### M6: HITRUST Audit & Security (Week 6)
 
-**Tasks:**
-- Implement structured JSON logging with `tracing`
-- Add all HITRUST-required fields (timestamp, user identity, URL, action, category, TLS details)
-- Create YAML configuration loader with `serde`
-- Add Tailscale identity extraction from connection metadata
-- Implement log rotation and retention policies
-- Add configuration validation
-
-**Deliverables:**
-- `src/audit/logger.rs` - Structured audit logging
-- `src/config/loader.rs` - YAML configuration loader
-- `config/default.yaml` - Default configuration
-- `config/example-filters.yaml` - Example filter configurations
-
-**Success Criteria:**
-- All proxy decisions logged in structured JSON
-- Logs contain all HITRUST-required fields
-- Configuration loads from YAML files
-- Invalid configurations are rejected with clear errors
-
-#### Phase 5: Testing & Documentation (Week 8)
-
-**Goals:** Comprehensive testing (80/20 split), documentation, and HITRUST evidence preparation
+**Goal:** Production-ready audit logging and security features
 
 **Tasks:**
-- Write unit tests for all modules (80% coverage target, following TDD)
-- Create one comprehensive integration test for end-to-end validation
-- Use `mockall` for dependency mocking in unit tests
-- Add certificate generation tests
-- Test PII redaction
-- Test certificate pinning bypass
-- Write comprehensive README with HITRUST control mapping
-- Create deployment guide for Tailscale exit node
-- Document audit log format for assessors
+- [ ] Implement complete HITRUST audit schema (all required fields)
+- [ ] Add Tailscale identity extraction from connection metadata
+- [ ] Implement PII redaction (SSN, credit card patterns)
+- [ ] Add configuration validation with clear errors
+- [ ] Create structured JSON output format
 
 **Deliverables:**
-- Unit tests throughout `src/` (following TDD from Phase 1)
-- `tests/integration/` - One comprehensive end-to-end test
-- `README.md` - Project documentation
-- `docs/HITRUST-CONTROLS.md` - Control mapping documentation
-- `docs/DEPLOYMENT.md` - Tailscale deployment guide
+- `src/audit/logger.rs` - Complete audit logging
+- `src/audit/redaction.rs` - PII redaction
+- `src/config/validation.rs` - Config validation
+- `docs/AUDIT-LOG-SCHEMA.md` - Log format documentation
 
-**Success Criteria:**
-- >80% test coverage (80% unit, 20% integration)
-- All HITRUST controls documented with evidence requirements
-- Deployment guide enables successful Tailscale exit node setup
+**Acceptance Criteria:**
+- All HITRUST-required fields present in logs
+- PII patterns redacted before logging
+- Tailscale user identity extracted when available
+- Invalid configs rejected with helpful errors
 - Audit logs are assessor-ready
+
+---
+
+#### M7: Production & CI (Week 7-8)
+
+**Goal:** CI/CD, documentation, full test coverage
+
+**Tasks:**
+- [ ] Set up GitHub Actions CI (rustfmt, clippy, test, audit)
+- [ ] Achieve >80% test coverage (80% unit, 20% integration)
+- [ ] Write comprehensive README
+- [ ] Create deployment guide for Tailscale exit node
+- [ ] Document HITRUST control mapping
+- [ ] Add example configurations
+
+**Deliverables:**
+- `.github/workflows/ci.yml` - CI pipeline
+- `README.md` - Quick start and overview
+- `docs/DEPLOYMENT.md` - Tailscale setup guide
+- `docs/HITRUST-CONTROLS.md` - Control mapping
+- All quality gates passing
+
+**Acceptance Criteria:**
+- CI passes on every commit (zero clippy warnings)
+- Test coverage >80%
+- Documentation complete for deployment
+- All acceptance criteria from M0-M6 verified
+- Ready for HITRUST assessor review
 
 ### Component Architecture
 
