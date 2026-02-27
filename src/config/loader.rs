@@ -53,19 +53,22 @@ fn is_test_environment() -> bool {
     if env::var("CARGO_PKG_NAME").is_ok() && cfg!(test) {
         return true;
     }
-    
+
     // Check for test-specific arguments in the command line
     let args: Vec<String> = env::args().collect();
-    if args.iter().any(|arg| arg.contains("test") || arg.contains("--test-threads")) {
+    if args
+        .iter()
+        .any(|arg| arg.contains("test") || arg.contains("--test-threads"))
+    {
         return true;
     }
-    
+
     false
 }
 
 /// Validate that a path is within the project directory
 /// This prevents path traversal attacks
-/// 
+///
 /// In test environments, this validation is relaxed to allow temp files
 fn validate_path_within_project(path: &Path) -> Result<PathBuf, ConfigError> {
     // Canonicalize the path to resolve any symlinks and relative components
@@ -176,7 +179,10 @@ logging:
         assert!(config.audit.redact_pii);
         assert_eq!(config.audit.level, super::super::types::LogLevel::Debug);
         assert_eq!(config.logging.level, super::super::types::LogLevel::Debug);
-        assert_eq!(config.logging.format, super::super::types::LogFormat::Pretty);
+        assert_eq!(
+            config.logging.format,
+            super::super::types::LogFormat::Pretty
+        );
     }
 
     #[tokio::test]
@@ -198,7 +204,8 @@ ca:
         assert_eq!(config.proxy.host, "0.0.0.0"); // default
         assert_eq!(config.ca.cert_path, "/etc/ca.crt");
         assert_eq!(config.audit.redact_pii, true); // default
-        assert_eq!(config.logging.format, super::super::types::LogFormat::Json); // default
+        assert_eq!(config.logging.format, super::super::types::LogFormat::Json);
+        // default
     }
 
     #[tokio::test]
@@ -240,7 +247,10 @@ ca:
         assert_eq!(config.ca.key_path, "config/ca.key");
         assert_eq!(config.ca.cache_size, 1000);
         assert_eq!(config.ca.cache_ttl_hours, 24);
-        assert_eq!(config.audit.output, super::super::types::AuditOutput::Stdout);
+        assert_eq!(
+            config.audit.output,
+            super::super::types::AuditOutput::Stdout
+        );
         assert_eq!(config.audit.redact_pii, true);
         assert_eq!(config.audit.level, super::super::types::LogLevel::Info);
         assert_eq!(config.logging.level, super::super::types::LogLevel::Info);
@@ -252,7 +262,7 @@ ca:
         // Test the validation function directly with a path outside the project
         let outside_path = Path::new("/etc/passwd");
         let result = validate_path_within_project(outside_path);
-        
+
         // In test mode, this should succeed (validation is relaxed)
         assert!(result.is_ok());
     }
@@ -260,9 +270,12 @@ ca:
     #[test]
     fn test_get_project_root() {
         let project_root = get_project_root().unwrap();
-        
+
         // The project root should contain Cargo.toml
         let cargo_toml = project_root.join("Cargo.toml");
-        assert!(cargo_toml.exists(), "Project root should contain Cargo.toml");
+        assert!(
+            cargo_toml.exists(),
+            "Project root should contain Cargo.toml"
+        );
     }
 }

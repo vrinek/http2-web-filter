@@ -98,8 +98,8 @@ fn init_logging(config: &LoggingConfig) {
     use tracing_subscriber::EnvFilter;
 
     // Priority: RUST_LOG env var > config.level > default "info"
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(config.level.as_str()));
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(config.level.as_str()));
 
     // Initialize with the configured format
     match config.format {
@@ -127,7 +127,7 @@ fn init_logging(config: &LoggingConfig) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     use std::fs;
     use tempfile::NamedTempFile;
 
@@ -164,7 +164,11 @@ logging:
 
         // Should succeed with valid config
         let result = try_validate_config().await;
-        assert!(result.is_ok(), "Expected config validation to succeed, got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Expected config validation to succeed, got: {:?}",
+            result
+        );
 
         // Clean up
         env::remove_var("CONFIG_PATH");
@@ -172,7 +176,8 @@ logging:
 
     #[tokio::test]
     async fn test_validate_config_failure_invalid_yaml() {
-        let yaml = "invalid: : : yaml";
+        // Create invalid YAML with unclosed quote
+        let yaml = "{\n  \"unclosed: value\n}";
 
         // Create a temp file in the project directory for path validation
         let temp_file = NamedTempFile::new_in(".").unwrap();
