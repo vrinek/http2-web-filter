@@ -1,0 +1,28 @@
+# HTTP/2 Web Filter Default Configuration
+# For HITRUST i1 Category 10 (Network Security) compliance
+
+# Proxy server settings
+proxy:
+  port: 8080
+  host: "0.0.0.0"
+  max_connections: 10000
+  timeout_seconds: 30
+
+# Certificate Authority settings for TLS MITM
+ca:
+  cert_path: "config/ca.crt"
+  key_path: "config/ca.key"
+  cache_size: 1000
+  cache_ttl_hours: 24
+
+# Audit logging settings
+audit:
+  output: "stdout"
+  file_path: null
+  redact_pii: true
+  level: "info"
+
+# Application logging settings
+logging:
+  level: "info"
+  format: "json"
